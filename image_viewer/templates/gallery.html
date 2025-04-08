@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像ギャラリー</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #35424a;
+            color: #ffffff;
+            padding: 10px 0;
+            text-align: center;
+        }
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .gallery-item {
+            margin: 10px;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .gallery-item img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        .gallery-item p {
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>画像ギャラリー</h1>
+    </header>
+    <div class="container">
+        <div class="gallery">
+            {% for image in images %}
+            <div class="gallery-item">
+                <img src="{{ image.path }}" alt="{{ image.name }}">
+                <p>{{ image.name }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
