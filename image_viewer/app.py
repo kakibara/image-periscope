@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
+from typing import Dict, List, Union
 
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, abort, render_template, send_from_directory
 
 
 def create_app(image_dir=None):
@@ -15,7 +16,12 @@ def create_app(image_dir=None):
         Flask: Configured Flask application instance.
     """
     instance = Flask(__name__)
-    instance.config['IMAGE_DIR'] = image_dir
+    
+    # 絶対パスに変換して保存
+    if image_dir:
+        instance.config['IMAGE_DIR'] = str(Path(image_dir).absolute())
+    else:
+        instance.config['IMAGE_DIR'] = None
     
     @instance.route('/')
     def index():
@@ -52,20 +58,17 @@ def create_app(image_dir=None):
         if not base_dir:
             return "Image directory not configured.", 400
             
-        target_dir = Path(base_dir) / path
-        target_dir = target_dir.resolve()
-        base_path = Path(base_dir).resolve()
+        # パスを安全に結合
+        target_dir = os.path.normpath(os.path.join(base_dir, path))
         
-        # Security check - prevent directory traversal attacks
-        try:
-            target_dir.relative_to(base_path)
-        except ValueError:
-            return "Access denied.", 403
+        # セキュリティチェック - ディレクトリトラバーサルを防止
+        if not os.path.commonpath([os.path.abspath(target_dir), base_dir]) == base_dir:
+            abort(403)
             
-        if not target_dir.exists() or not target_dir.is_dir():
-            return "Directory not found.", 404
+        if not os.path.exists(target_dir) or not os.path.isdir(target_dir):
+            abort(404)
             
-        # Calculate parent path for navigation
+        # 親パスを計算
         parent_path = str(Path(path).parent) if path else None
         if parent_path == '.':
             parent_path = ''
@@ -90,9 +93,23 @@ def create_app(image_dir=None):
             Response: Flask response containing the requested image.
         """
         base_dir = instance.config.get('IMAGE_DIR')
-        return send_from_directory(base_dir, filename)
+        if not base_dir:
+            abort(400)
+        
+        # パスを安全に解決
+        file_path = os.path.normpath(os.path.join(base_dir, filename))
+        
+        # セキュリティチェック - ディレクトリトラバーサルを防止
+        if not os.path.commonpath([os.path.abspath(file_path), base_dir]) == base_dir:
+            abort(403)
+        
+        # ディレクトリとファイル名を分ける
+        directory = os.path.dirname(file_path)
+        basename = os.path.basename(file_path)
+        
+        return send_from_directory(directory, basename)
     
-    # 外部からの画像表示を許可するためにCORSヘッダーを追加
+    # CORS設定を強化
     @instance.after_request
     def add_header(response):
         """Add headers to allow cross-origin requests.
@@ -104,67 +121,84 @@ def create_app(image_dir=None):
             Response: Modified response with CORS headers.
         """
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        # キャッシュ問題を回避
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         return response
     
     return instance
 
-def get_directories(directory, base_path=''):
+
+def get_directories(directory: Union[str, Path], base_path: str = '') -> List[Dict[str, str]]:
     """Get subdirectories from the specified directory.
     
     Args:
-        directory (str or Path): Directory to scan for subdirectories.
-        base_path (str, optional): Base path for URL construction. Defaults to ''.
+        directory: Directory to scan for subdirectories.
+        base_path: Base path for URL construction. Defaults to ''.
         
     Returns:
-        list: List of directory information dictionaries.
+        List of directory information dictionaries.
     """
-    dir_path = Path(directory)
-    if not dir_path.exists():
-        return []
-        
-    result = []
-    
-    for item in dir_path.iterdir():
-        if item.is_dir():
-            # パスの結合とURLの正規化
-            url_path_parts = Path(base_path) / item.name
-            url_path = f"/browse/{url_path_parts}".replace('\\', '/')
-            result.append({
-                'name': item.name,
-                'path': url_path
-            })
+    try:
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            return []
             
-    return sorted(result, key=lambda x: x['name'])
+        result = []
+        
+        for item in dir_path.iterdir():
+            if item.is_dir():
+                # 安全にURLパスを構築
+                url_path = f"/browse/{base_path}/{item.name}".replace('//', '/').rstrip('/')
+                if not url_path.startswith('/browse'):
+                    url_path = f"/browse{url_path}"
+                result.append({
+                    'name': item.name,
+                    'path': url_path
+                })
+                
+        return sorted(result, key=lambda x: x['name'])
+    except Exception as e:
+        print(f"ディレクトリ取得エラー: {e}")
+        return []
 
-def get_formatted_images(directory, base_path=''):
+
+def get_formatted_images(directory: Union[str, Path], base_path: str = '') -> List[Dict[str, str]]:
     """Get images from directory with proper URL paths.
     
     Args:
-        directory (str or Path): Directory to scan for image files.
-        base_path (str, optional): Base path for URL construction. Defaults to ''.
+        directory: Directory to scan for image files.
+        base_path: Base path for URL construction. Defaults to ''.
         
     Returns:
-        list: List of image information dictionaries with absolute URLs.
+        List of image information dictionaries with absolute URLs.
     """
-    dir_path = Path(directory)
-    if not dir_path.exists():
-        return []
-        
-    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
-    result = []
-    
-    for item in dir_path.iterdir():
-        if item.is_file() and item.suffix.lower() in image_extensions:
-            # パスの結合とURLの正規化
-            url_path_parts = Path(base_path) / item.name
-            url_path = f"/images/{url_path_parts}".replace('\\', '/')
-            result.append({
-                'name': item.name,
-                'path': url_path
-            })
+    try:
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            return []
             
-    return sorted(result, key=lambda x: x['name'])
+        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
+        result = []
+        
+        for item in dir_path.iterdir():
+            if item.is_file() and item.suffix.lower() in image_extensions:
+                # 安全にURLパスを構築
+                image_path = f"{base_path}/{item.name}".lstrip('/').replace('\\', '/')
+                url_path = f"/images/{image_path}"
+                
+                result.append({
+                    'name': item.name,
+                    'path': url_path
+                })
+                
+        return sorted(result, key=lambda x: x['name'])
+    except Exception as e:
+        print(f"画像リスト取得エラー: {e}")
+        return []
+
 
 if __name__ == '__main__':
     app = create_app(image_dir='path/to/images')
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5000)
