@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from flask import Flask, render_template, send_from_directory
 
@@ -18,7 +19,11 @@ def create_app(image_dir=None):
     
     @instance.route('/')
     def index():
-        """Render the index page with directory structure."""
+        """Render the index page with directory structure.
+        
+        Returns:
+            str: Rendered HTML template with directory contents.
+        """
         base_dir = instance.config.get('IMAGE_DIR')
         if not base_dir or not os.path.exists(base_dir):
             return "Image directory not configured or not found.", 400
@@ -47,17 +52,23 @@ def create_app(image_dir=None):
         if not base_dir:
             return "Image directory not configured.", 400
             
-        target_dir = os.path.normpath(os.path.join(base_dir, path))
+        target_dir = Path(base_dir) / path
+        target_dir = target_dir.resolve()
+        base_path = Path(base_dir).resolve()
         
         # Security check - prevent directory traversal attacks
-        if not os.path.commonpath([target_dir, base_dir]) == base_dir:
+        try:
+            target_dir.relative_to(base_path)
+        except ValueError:
             return "Access denied.", 403
             
-        if not os.path.exists(target_dir) or not os.path.isdir(target_dir):
+        if not target_dir.exists() or not target_dir.is_dir():
             return "Directory not found.", 404
             
         # Calculate parent path for navigation
-        parent_path = os.path.dirname(path) if path else None
+        parent_path = str(Path(path).parent) if path else None
+        if parent_path == '.':
+            parent_path = ''
         
         directories = get_directories(target_dir, base_path=path)
         images = get_formatted_images(target_dir, base_path=path)
@@ -78,7 +89,22 @@ def create_app(image_dir=None):
         Returns:
             Response: Flask response containing the requested image.
         """
-        return send_from_directory(instance.config['IMAGE_DIR'], filename)
+        base_dir = instance.config.get('IMAGE_DIR')
+        return send_from_directory(base_dir, filename)
+    
+    # 外部からの画像表示を許可するためにCORSヘッダーを追加
+    @instance.after_request
+    def add_header(response):
+        """Add headers to allow cross-origin requests.
+        
+        Args:
+            response: Flask response object.
+            
+        Returns:
+            Response: Modified response with CORS headers.
+        """
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
     
     return instance
 
@@ -86,23 +112,25 @@ def get_directories(directory, base_path=''):
     """Get subdirectories from the specified directory.
     
     Args:
-        directory (str): Directory to scan for subdirectories.
+        directory (str or Path): Directory to scan for subdirectories.
         base_path (str, optional): Base path for URL construction. Defaults to ''.
         
     Returns:
         list: List of directory information dictionaries.
     """
-    if not os.path.exists(directory):
+    dir_path = Path(directory)
+    if not dir_path.exists():
         return []
         
     result = []
     
-    for item in os.listdir(directory):
-        item_path = os.path.join(directory, item)
-        if os.path.isdir(item_path):
-            url_path = f"/browse/{os.path.join(base_path, item)}".replace('\\', '/')
+    for item in dir_path.iterdir():
+        if item.is_dir():
+            # パスの結合とURLの正規化
+            url_path_parts = Path(base_path) / item.name
+            url_path = f"/browse/{url_path_parts}".replace('\\', '/')
             result.append({
-                'name': item,
+                'name': item.name,
                 'path': url_path
             })
             
@@ -112,24 +140,26 @@ def get_formatted_images(directory, base_path=''):
     """Get images from directory with proper URL paths.
     
     Args:
-        directory (str): Directory to scan for image files.
+        directory (str or Path): Directory to scan for image files.
         base_path (str, optional): Base path for URL construction. Defaults to ''.
         
     Returns:
-        list: List of image information dictionaries.
+        list: List of image information dictionaries with absolute URLs.
     """
-    if not os.path.exists(directory):
+    dir_path = Path(directory)
+    if not dir_path.exists():
         return []
         
-    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
     result = []
     
-    for item in os.listdir(directory):
-        item_path = os.path.join(directory, item)
-        if os.path.isfile(item_path) and os.path.splitext(item)[1].lower() in image_extensions:
-            url_path = f"/images/{os.path.join(base_path, item)}".replace('\\', '/')
+    for item in dir_path.iterdir():
+        if item.is_file() and item.suffix.lower() in image_extensions:
+            # パスの結合とURLの正規化
+            url_path_parts = Path(base_path) / item.name
+            url_path = f"/images/{url_path_parts}".replace('\\', '/')
             result.append({
-                'name': item,
+                'name': item.name,
                 'path': url_path
             })
             
@@ -137,4 +167,4 @@ def get_formatted_images(directory, base_path=''):
 
 if __name__ == '__main__':
     app = create_app(image_dir='path/to/images')
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

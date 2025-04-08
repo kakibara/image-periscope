@@ -1,11 +1,13 @@
 import argparse
+
 from image_viewer.app import create_app
+
 
 def main():
     """Main entry point for the CLI application."""
     parser = argparse.ArgumentParser(description='Start the image viewer web application.')
-    parser.add_argument('directory', type=str, help='The directory containing images to display.')
     parser.add_argument('port', type=int, help='The port number to run the web application on.')
+    parser.add_argument('directory', type=str, help='The directory containing images to display.')
 
     args = parser.parse_args()
 
