@@ -1,39 +1,60 @@
-import os
+import shutil
+import tempfile
+from pathlib import Path
+
 import pytest
+
 from image_viewer.image_utils import get_image_list
 
-def test_get_image_list():
-    """Test the get_image_list function for various directory structures."""
-    
-    # Create a temporary directory structure for testing
-    test_dir = 'test_images'
-    os.makedirs(os.path.join(test_dir, 'subdir1'), exist_ok=True)
-    os.makedirs(os.path.join(test_dir, 'subdir2'), exist_ok=True)
-    
-    # Create some test image files
-    with open(os.path.join(test_dir, 'image1.jpg'), 'w') as f:
-        f.write('This is a test image file.')
-    with open(os.path.join(test_dir, 'subdir1', 'image2.png'), 'w') as f:
-        f.write('This is another test image file.')
-    with open(os.path.join(test_dir, 'subdir2', 'image3.gif'), 'w') as f:
-        f.write('This is yet another test image file.')
 
-    # Test the function
-    image_list = get_image_list(test_dir)
+@pytest.fixture
+def test_image_dir():
+    """テスト用の一時画像ディレクトリを作成する。
     
-    # Check if the image list contains the correct paths
-    expected_images = [
-        os.path.join(test_dir, 'image1.jpg'),
-        os.path.join(test_dir, 'subdir1', 'image2.png'),
-        os.path.join(test_dir, 'subdir2', 'image3.gif')
-    ]
+    テスト用の画像ファイルとサブディレクトリを含む一時ディレクトリを作成し、
+    テスト後に自動的にクリーンアップする。
     
-    assert sorted(image_list) == sorted(expected_images)
+    Returns:
+        Path: 一時ディレクトリのパス
+    """
+    # 一時ディレクトリを作成
+    temp_dir = Path(tempfile.mkdtemp())
+    
+    # テスト用のディレクトリ構造を作成
+    (temp_dir / "subdir1").mkdir()
+    (temp_dir / "subdir2").mkdir()
+    
+    # テスト画像ファイルを作成
+    (temp_dir / "image1.jpg").write_text("This is a test image file.")
+    (temp_dir / "subdir1" / "image2.png").write_text("This is another test image file.")
+    (temp_dir / "subdir2" / "image3.gif").write_text("This is yet another test image file.")
+    
+    yield temp_dir
+    
+    # テスト後に一時ディレクトリを削除
+    shutil.rmtree(temp_dir)
 
-    # Clean up the temporary directory
-    for root, dirs, files in os.walk(test_dir, topdown=False):
-        for name in files:
-            os.remove(os.path.join(root, name))
-        for name in dirs:
-            os.rmdir(os.path.join(root, name))
-    os.rmdir(test_dir)
+
+def test_get_image_list(test_image_dir):
+    """get_image_list関数が正しく画像ファイルのリストを返すことをテストする。
+    
+    Args:
+        test_image_dir: テスト画像用の一時ディレクトリ
+    """
+    # 関数をテスト
+    image_list = get_image_list(test_image_dir)
+    
+    # 結果を検証
+    assert len(image_list) == 3
+    
+    # 各画像がリストに含まれているか確認
+    paths = {str(img["path"]): img["name"] for img in image_list}
+    
+    assert "image1.jpg" in paths.values()
+    assert "image2.png" in paths.values()
+    assert "image3.gif" in paths.values()
+    
+    # パスが正しく取得されているか確認
+    assert any(path.endswith("image1.jpg") for path in paths.keys())
+    assert any("subdir1" in path and path.endswith("image2.png") for path in paths.keys())
+    assert any("subdir2" in path and path.endswith("image3.gif") for path in paths.keys())

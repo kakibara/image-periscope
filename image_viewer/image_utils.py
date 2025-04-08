@@ -1,45 +1,55 @@
-import os
-from flask import render_template
+from pathlib import Path
+from typing import Dict, List, Union
 
-def get_image_list(directory):
-    """Retrieve a list of images in the specified directory, maintaining the hierarchy.
+
+def get_image_list(directory: Union[str, Path]) -> List[Dict[str, Path]]:
+    """画像ディレクトリ内の全画像ファイルのリストを取得する。
+
+    ディレクトリ内の画像を再帰的に検索し、その階層関係を保持したリストを返します。
 
     Args:
-        directory (str): The path to the directory to search for images.
+        directory: 画像を検索するディレクトリのパス
 
     Returns:
-        list: A list of dictionaries containing image paths and their respective hierarchy.
+        画像パスとその名前を含む辞書のリスト
     """
     image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'}
     images = []
+    dir_path = Path(directory)
 
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if os.path.splitext(file)[1].lower() in image_extensions:
-                relative_path = os.path.relpath(os.path.join(root, file), directory)
-                images.append({'path': relative_path, 'name': file})
+    for file_path in dir_path.glob('**/*'):
+        if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+            # 相対パスを計算
+            relative_path = file_path.relative_to(dir_path)
+            images.append({'path': relative_path, 'name': file_path.name})
 
     return images
 
-def organize_images(images):
-    """Organize images into a hierarchical structure.
+
+def organize_images(images: List[Dict[str, Path]]) -> Dict[str, Union[Path, Dict]]:
+    """画像リストを階層構造に整理する。
+
+    画像のパス情報から、ディレクトリ階層を表す入れ子の辞書構造を作成します。
 
     Args:
-        images (list): A list of image dictionaries.
+        images: 画像パス情報を含む辞書のリスト
 
     Returns:
-        dict: A nested dictionary representing the hierarchy of images.
+        画像の階層構造を表す入れ子の辞書
     """
     organized = {}
     for image in images:
-        parts = image['path'].split(os.sep)
+        # パス部分を取得
+        path_parts = image['path'].parts
         current_level = organized
 
-        for part in parts[:-1]:  # Exclude the file name
+        # ファイル名を除く各パス部分を処理
+        for part in path_parts[:-1]:
             if part not in current_level:
                 current_level[part] = {}
             current_level = current_level[part]
 
-        current_level[parts[-1]] = image['path']  # Add the image file
+        # 最後の部分（ファイル名）を追加
+        current_level[path_parts[-1]] = image['path']
 
     return organized
