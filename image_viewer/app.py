@@ -37,6 +37,9 @@ def create_app(image_dir=None):
         directories = get_directories(base_dir)
         images = get_formatted_images(base_dir)
         
+        # パンくずリスト用
+        path_parts = []
+        
         # ページネーション
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 100))
@@ -47,6 +50,7 @@ def create_app(image_dir=None):
         total_pages = (total + per_page - 1) // per_page
         
         col_count = int(request.args.get('col_count', 3))
+        directory_tree = get_directory_tree(base_dir)
         return render_template('index.html', 
                               directories=directories,
                               images=paged_images,
@@ -55,7 +59,9 @@ def create_app(image_dir=None):
                               page=page,
                               total_pages=total_pages,
                               per_page=per_page,
-                              col_count=col_count)
+                              col_count=col_count,
+                              directory_tree=directory_tree,
+                              path_parts=path_parts)
     
     @instance.route('/browse/', defaults={'path': ''})
     @instance.route('/browse/<path:path>')
@@ -90,6 +96,9 @@ def create_app(image_dir=None):
         directories = get_directories(target_dir, base_path=path)
         images = get_formatted_images(target_dir, base_path=path)
         
+        # パンくずリスト用
+        path_parts = path.split('/') if path else []
+        
         # ページネーション
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 100))
@@ -100,6 +109,7 @@ def create_app(image_dir=None):
         total_pages = (total + per_page - 1) // per_page
         
         col_count = int(request.args.get('col_count', 3))
+        directory_tree = get_directory_tree(base_dir)
         return render_template('index.html',
                               directories=directories,
                               images=paged_images,
@@ -108,7 +118,9 @@ def create_app(image_dir=None):
                               page=page,
                               total_pages=total_pages,
                               per_page=per_page,
-                              col_count=col_count)
+                              col_count=col_count,
+                              directory_tree=directory_tree,
+                              path_parts=path_parts)
     
     @instance.route('/images/<path:filename>')
     def serve_image(filename):
@@ -225,6 +237,23 @@ def get_formatted_images(directory: Union[str, Path], base_path: str = '') -> Li
     except Exception as e:
         print(f"画像リスト取得エラー: {e}")
         return []
+
+
+def get_directory_tree(directory: Union[str, Path], base_path: str = '') -> dict:
+    """
+    指定ディレクトリ以下のツリー構造を再帰的に辞書で返す。
+    """
+    dir_path = Path(directory)
+    tree = {
+        'name': dir_path.name if base_path else 'ルート',
+        'path': f"/browse/{base_path}" if base_path else '/',
+        'children': []
+    }
+    for item in sorted(dir_path.iterdir(), key=lambda x: x.name):
+        if item.is_dir():
+            child_base = f"{base_path}/{item.name}".lstrip('/')
+            tree['children'].append(get_directory_tree(item, child_base))
+    return tree
 
 
 if __name__ == '__main__':

@@ -47,6 +47,28 @@
     <header>
         <h1>画像ギャラリー</h1>
     </header>
+    <div style="margin: 20px auto 10px auto; max-width: 1200px;">
+        <nav style="background:#fff; border:1px solid #ddd; border-radius:5px; padding:10px;">
+            <strong>ディレクトリ:</strong>
+            <div style="padding-left:10px;">
+                <!-- パンくずリスト -->
+                <div style="margin-bottom:8px;">
+                    <a href="/browse?per_page={{ per_page }}&col_count={{ col_count }}">ルート</a>
+                    {% set current = '' %}
+                    {% for part in path_parts %}
+                        {% set current = current + '/' + part if current else part %}
+                        &gt; <a href="/browse/{{ current }}?per_page={{ per_page }}&col_count={{ col_count }}">{{ part }}</a>
+                    {% endfor %}
+                </div>
+                <!-- 直下のディレクトリ一覧 -->
+                <ul style="list-style:none; padding-left:0; margin:0; display:flex; flex-wrap:wrap; gap:10px;">
+                    {% for dir in directories %}
+                        <li><a href="{{ dir.path }}?per_page={{ per_page }}&col_count={{ col_count }}">{{ dir.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </nav>
+    </div>
     <div style="text-align:center; margin-bottom: 20px;">
         <form method="get" style="display:inline-block; margin-bottom:0;">
             <label for="per_page">1ページあたりの表示枚数:</label>
