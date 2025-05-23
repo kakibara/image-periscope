@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Union
 
-from flask import Flask, abort, render_template, send_from_directory
+from flask import Flask, abort, render_template, request, send_from_directory
 
 
 def create_app(image_dir=None):
@@ -37,11 +37,25 @@ def create_app(image_dir=None):
         directories = get_directories(base_dir)
         images = get_formatted_images(base_dir)
         
+        # ページネーション
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 100))
+        total = len(images)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_images = images[start:end]
+        total_pages = (total + per_page - 1) // per_page
+        
+        col_count = int(request.args.get('col_count', 3))
         return render_template('index.html', 
                               directories=directories,
-                              images=images,
+                              images=paged_images,
                               current_path="",
-                              parent_path=None)
+                              parent_path=None,
+                              page=page,
+                              total_pages=total_pages,
+                              per_page=per_page,
+                              col_count=col_count)
     
     @instance.route('/browse/', defaults={'path': ''})
     @instance.route('/browse/<path:path>')
@@ -76,11 +90,25 @@ def create_app(image_dir=None):
         directories = get_directories(target_dir, base_path=path)
         images = get_formatted_images(target_dir, base_path=path)
         
+        # ページネーション
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 100))
+        total = len(images)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_images = images[start:end]
+        total_pages = (total + per_page - 1) // per_page
+        
+        col_count = int(request.args.get('col_count', 3))
         return render_template('index.html',
                               directories=directories,
-                              images=images,
+                              images=paged_images,
                               current_path=path,
-                              parent_path=parent_path)
+                              parent_path=parent_path,
+                              page=page,
+                              total_pages=total_pages,
+                              per_page=per_page,
+                              col_count=col_count)
     
     @instance.route('/images/<path:filename>')
     def serve_image(filename):
