@@ -2,6 +2,10 @@
 
 This project is a simple web application that allows users to view images stored in a specified directory. The application maintains the directory structure and displays images in a gallery format.
 
+```bash
+pipx install git+https://github.com/kakibara/image-viewer.git
+```
+
 ## Project Structure
 
 ```
