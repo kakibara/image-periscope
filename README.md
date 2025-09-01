@@ -9,8 +9,8 @@ pipx install git+https://github.com/kakibara/image-periscope.git
 ## Project Structure
 
 ```
-image-viewer
-├── image_viewer
+image-periscope
+├── image_periscope
 │   ├── __init__.py          # Initializes the package
 │   ├── app.py               # Entry point for the Flask application
 │   ├── cli.py               # CLI commands for launching the application
@@ -40,7 +40,7 @@ pip install -r requirements.txt
 To start the web application, use the CLI command:
 
 ```
-python -m image_viewer.cli <directory_path> <port_number>
+python -m image_periscope.cli <directory_path> <port_number>
 ```
 
 Replace `<directory_path>` with the path to the directory containing your images and `<port_number>` with the desired port number.

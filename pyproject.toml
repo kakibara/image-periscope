@@ -3,12 +3,12 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "image_viewer"
+name = "image-periscope"
 version = "0.4.0"
 description = "A web application to display images from a specified directory while maintaining the directory structure."
 authors = ["kakibara <moritarizumu@gmail.com>"]
 readme = "README.md"
-packages = [{include = "image_viewer"}]
+packages = [{include = "image_periscope"}]
 
 [tool.poetry.dependencies]
 python = ">=3.12"
@@ -24,7 +24,7 @@ mypy = "^1.17.1"
 
 
 [tool.poetry.scripts]
-image-viewer = "image_viewer.cli:main"
+image-periscope = "image_periscope.cli:main"
 
 
 [tool.ruff]
