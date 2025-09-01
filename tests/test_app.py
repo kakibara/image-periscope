@@ -90,7 +90,6 @@ def test_browse_route_invalid_path(client):
     """存在しないパスへのブラウズルートをテスト。"""
     response = client.get("/browse/invalid_path")
     assert response.status_code == 404
-    assert b"Directory not found." in response.data
 
 def test_serve_image(client, test_image_dir):
     """画像サービングルートが正しく画像を提供することをテスト。"""

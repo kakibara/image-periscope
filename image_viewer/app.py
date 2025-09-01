@@ -1,4 +1,5 @@
 """This module implements the Flask web application for the Image Viewer."""
+import os
 from pathlib import Path
 from typing import TypedDict
 
@@ -82,18 +83,18 @@ def create_app(image_dir=None):
         Returns:
             str: Rendered HTML template with directory contents.
         """
-        base_dir_path = Path(instance.config.get("IMAGE_DIR"))
-        if not base_dir_path:
+        base_dir = instance.config.get("IMAGE_DIR")
+        if not base_dir:
             return "Image directory not configured.", 400
 
         # パスを安全に結合
-        target_dir_path = (base_dir_path / path).resolve()
+        target_dir = os.path.normpath(os.path.join(base_dir, path))
 
         # セキュリティチェック - ディレクトリトラバーサルを防止
-        if base_dir_path not in target_dir_path.parents and target_dir_path != base_dir_path:
+        if not os.path.abspath(target_dir).startswith(os.path.abspath(base_dir)):
             abort(403)
 
-        if not target_dir_path.exists() or not target_dir_path.is_dir():
+        if not Path(target_dir).exists() or not Path(target_dir).is_dir():
             abort(404)
 
         # 親パスを計算
@@ -101,8 +102,8 @@ def create_app(image_dir=None):
         if parent_path == ".":
             parent_path = ""
 
-        directories = get_directories(target_dir_path, base_path=path)
-        images = get_formatted_images(target_dir_path, base_path=path)
+        directories = get_directories(target_dir, base_path=path)
+        images = get_formatted_images(target_dir, base_path=path)
 
         # パンくずリスト用
         path_parts = path.split("/") if path else []
@@ -117,7 +118,7 @@ def create_app(image_dir=None):
         total_pages = (total + per_page - 1) // per_page
 
         col_count = int(request.args.get("col_count", 3))
-        directory_tree = get_directory_tree(base_dir_path)
+        directory_tree = get_directory_tree(base_dir)
         return render_template("index.html",
                               directories=directories,
                               images=paged_images,
@@ -140,20 +141,20 @@ def create_app(image_dir=None):
         Returns:
             Response: Flask response containing the requested image.
         """
-        base_dir_path = Path(instance.config.get("IMAGE_DIR"))
-        if not base_dir_path:
+        base_dir = instance.config.get("IMAGE_DIR")
+        if not base_dir:
             abort(400)
 
         # パスを安全に解決
-        file_path = (base_dir_path / filename).resolve()
+        file_path = os.path.normpath(os.path.join(base_dir, filename))
 
         # セキュリティチェック - ディレクトリトラバーサルを防止
-        if base_dir_path not in file_path.parents:
+        if not os.path.abspath(file_path).startswith(os.path.abspath(base_dir)):
             abort(403)
 
         # ディレクトリとファイル名を分ける
-        directory = file_path.parent
-        basename = file_path.name
+        directory = Path(file_path).parent
+        basename = Path(file_path).name
 
         return send_from_directory(directory, basename)
 

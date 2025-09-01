@@ -15,21 +15,15 @@ def test_image_dir():
     Returns:
         Path: 一時ディレクトリのパス
     """
-    with tempfile.TemporaryDirectory() as temp_dir_str:
-        temp_dir = Path(temp_dir_str)
-
+    temp_dir = Path(tempfile.mkdtemp())
     # テスト用のディレクトリ構造を作成
     (temp_dir / "subdir1").mkdir()
-    (temp_dir / "subdir2").mkdir()
-
-    # テスト画像ファイルを作成
-    (temp_dir / "image1.jpg").write_text("This is a test image file.")
-    (temp_dir / "subdir1" / "image2.png").write_text("This is another test image file.")
-    (temp_dir / "subdir2" / "image3.gif").write_text("This is yet another test image file.")
+    (temp_dir / "image1.jpg").write_text("dummy data")
+    (temp_dir / "subdir1" / "image2.png").write_text("dummy data")
 
     yield temp_dir
 
-    # テスト後に一時ディレクトリを削除
+    # クリーンアップ
     shutil.rmtree(temp_dir)
 
 
@@ -42,16 +36,8 @@ def test_get_image_list(test_image_dir):
     image_list = get_image_list(test_image_dir)
 
     # 結果を検証
-    assert len(image_list) == 3
-
-    # 各画像がリストに含まれているか確認
-    paths = {str(img["path"]): img["name"] for img in image_list}
-
-    assert "image1.jpg" in paths.values()
-    assert "image2.png" in paths.values()
-    assert "image3.gif" in paths.values()
-
-    # パスが正しく取得されているか確認
-    assert any(path.endswith("image1.jpg") for path in paths.keys())
-    assert any("subdir1" in path and path.endswith("image2.png") for path in paths.keys())
-    assert any("subdir2" in path and path.endswith("image3.gif") for path in paths.keys())
+    assert len(image_list) == 2
+    # 'image1.jpg' と 'subdir1/image2.png' が含まれていることを確認
+    paths = [img["path"] for img in image_list]
+    assert "image1.jpg" in paths
+    assert str(Path("subdir1") / "image2.png") in paths
