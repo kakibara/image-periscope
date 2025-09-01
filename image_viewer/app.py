@@ -1,5 +1,4 @@
 """This module implements the Flask web application for the Image Viewer."""
-import os
 from pathlib import Path
 from typing import TypedDict
 
@@ -39,12 +38,12 @@ def create_app(image_dir=None):
         Returns:
             str: Rendered HTML template with directory contents.
         """
-        base_dir = instance.config.get("IMAGE_DIR")
-        if not base_dir or not Path(base_dir).exists():
+        base_dir_path = Path(instance.config.get("IMAGE_DIR")).resolve()
+        if not base_dir_path or not base_dir_path.exists():
             return "Image directory not configured or not found.", 400
 
-        directories = get_directories(base_dir)
-        images = get_formatted_images(base_dir)
+        directories = get_directories(base_dir_path)
+        images = get_formatted_images(base_dir_path)
 
         # パンくずリスト用
         path_parts: list[str] = []
@@ -59,7 +58,7 @@ def create_app(image_dir=None):
         total_pages = (total + per_page - 1) // per_page
 
         col_count = int(request.args.get("col_count", 3))
-        directory_tree = get_directory_tree(base_dir)
+        directory_tree = get_directory_tree(base_dir_path)
         return render_template("index.html",
                               directories=directories,
                               images=paged_images,
@@ -83,18 +82,18 @@ def create_app(image_dir=None):
         Returns:
             str: Rendered HTML template with directory contents.
         """
-        base_dir = instance.config.get("IMAGE_DIR")
-        if not base_dir:
+        base_dir_path = Path(instance.config.get("IMAGE_DIR")).resolve()
+        if not base_dir_path:
             return "Image directory not configured.", 400
 
         # パスを安全に結合
-        target_dir = os.path.normpath(os.path.join(base_dir, path))
+        target_dir_path = (base_dir_path / path).resolve()
 
         # セキュリティチェック - ディレクトリトラバーサルを防止
-        if not os.path.abspath(target_dir).startswith(os.path.abspath(base_dir)):
+        if base_dir_path not in target_dir_path.parents and target_dir_path != base_dir_path:
             abort(403)
 
-        if not Path(target_dir).exists() or not Path(target_dir).is_dir():
+        if not target_dir_path.exists() or not target_dir_path.is_dir():
             abort(404)
 
         # 親パスを計算
@@ -102,8 +101,8 @@ def create_app(image_dir=None):
         if parent_path == ".":
             parent_path = ""
 
-        directories = get_directories(target_dir, base_path=path)
-        images = get_formatted_images(target_dir, base_path=path)
+        directories = get_directories(target_dir_path, base_path=path)
+        images = get_formatted_images(target_dir_path, base_path=path)
 
         # パンくずリスト用
         path_parts = path.split("/") if path else []
@@ -118,7 +117,7 @@ def create_app(image_dir=None):
         total_pages = (total + per_page - 1) // per_page
 
         col_count = int(request.args.get("col_count", 3))
-        directory_tree = get_directory_tree(base_dir)
+        directory_tree = get_directory_tree(base_dir_path)
         return render_template("index.html",
                               directories=directories,
                               images=paged_images,
@@ -141,20 +140,20 @@ def create_app(image_dir=None):
         Returns:
             Response: Flask response containing the requested image.
         """
-        base_dir = instance.config.get("IMAGE_DIR")
-        if not base_dir:
+        base_dir_path = Path(instance.config.get("IMAGE_DIR")).resolve()
+        if not base_dir_path:
             abort(400)
 
         # パスを安全に解決
-        file_path = os.path.normpath(os.path.join(base_dir, filename))
+        file_path = (base_dir_path / filename).resolve()
 
         # セキュリティチェック - ディレクトリトラバーサルを防止
-        if not os.path.abspath(file_path).startswith(os.path.abspath(base_dir)):
+        if base_dir_path not in file_path.parents and file_path != base_dir_path:
             abort(403)
 
         # ディレクトリとファイル名を分ける
-        directory = Path(file_path).parent
-        basename = Path(file_path).name
+        directory = file_path.parent
+        basename = file_path.name
 
         return send_from_directory(directory, basename)
 
@@ -179,7 +178,7 @@ def create_app(image_dir=None):
     return instance
 
 
-def get_directories(directory: str | Path, base_path: str = "") -> list[dict[str, str]]:
+def get_directories(directory: Path, base_path: str = "") -> list[dict[str, str]]:
     """Get subdirectories from the specified directory.
 
     Args:
@@ -213,7 +212,7 @@ def get_directories(directory: str | Path, base_path: str = "") -> list[dict[str
         return []
 
 
-def get_formatted_images(directory: str | Path, base_path: str = "") -> list[dict[str, str]]:
+def get_formatted_images(directory: Path, base_path: str = "") -> list[dict[str, str]]:
     """Get images from directory with proper URL paths.
 
     Args:
@@ -248,7 +247,7 @@ def get_formatted_images(directory: str | Path, base_path: str = "") -> list[dic
         return []
 
 
-def get_directory_tree(directory: str | Path, base_path: str = "") -> DirectoryTree:
+def get_directory_tree(directory: Path, base_path: str = "") -> DirectoryTree:
     """指定ディレクトリ以下のツリー構造を再帰的に辞書で返す。"""
     dir_path = Path(directory)
     tree: DirectoryTree = {
