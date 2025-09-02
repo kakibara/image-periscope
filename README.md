@@ -29,27 +29,39 @@ image-periscope
 
 ## Installation
 
-To install the required dependencies, run:
-
-```
-pip install -r requirements.txt
+To install with pipx, run:
+```bash
+pipx install git+https://github.com/kakibara/image-periscope.git
 ```
 
 ## Usage
 
 To start the web application, use the CLI command:
 
-```
-python -m image_periscope.cli <directory_path> <port_number>
+```bash
+image-periscope <port_number> <directory_path> [--host <ip_address>]
 ```
 
-Replace `<directory_path>` with the path to the directory containing your images and `<port_number>` with the desired port number.
+-   `<port_number>`: The port number to run the web application on.
+-   `<directory_path>`: The path to the directory containing your images.
+-   `--host <ip_address>` (optional): The host IP to bind to. Defaults to `127.0.0.1` (localhost), which only allows access from the local machine. To allow access from other machines, use `0.0.0.0`.
+
+Example:
+```bash
+# Run on port 8000, serving images from the current directory
+# Accessible only from the local machine
+image-periscope 8000 .
+
+# Run on port 8888, serving images from /path/to/images
+# Accessible from any IP address
+image-periscope 8888 /path/to/images --host 0.0.0.0
+```
 
 ## Features
 
-- Displays images in a gallery format while preserving the directory structure.
-- Simple command-line interface for easy usage.
-- Built with Flask for a lightweight web application experience.
+-   Displays images in a gallery format while preserving the directory structure.
+-   Simple command-line interface for easy usage.
+-   Built with Flask for a lightweight web application experience.
 
 ## Contributing
 

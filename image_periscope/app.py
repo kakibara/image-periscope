@@ -264,4 +264,4 @@ def get_directory_tree(directory: Path, base_path: str = "") -> DirectoryTree:
 
 if __name__ == "__main__":
     app = create_app(image_dir="path/to/images")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="127.0.0.1", port=5000)
