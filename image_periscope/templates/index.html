@@ -65,6 +65,64 @@
             height: auto;
             max-width: 90%;
             max-height: 90vh;
+            transition: transform 0.2s ease-in-out;
+            cursor: zoom-in;
+        }
+
+        .modal-content.zoomed {
+            max-width: none;
+            max-height: none;
+            cursor: grab;
+        }
+
+        .modal-content.zoomed:active {
+            cursor: grabbing;
+        }
+
+        .modal-controls {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .modal-controls button {
+            background-color: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 18px;
+            border-radius: 3px;
+            margin: 0 5px;
+        }
+
+        .modal-controls button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #zoomLevelLabel {
+            color: white;
+            margin: 0 10px;
+            font-size: 16px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        #zoomLevelInput {
+            width: 50px;
+            background-color: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            text-align: center;
+            font-size: 16px;
+            border-radius: 3px;
         }
 
         /* The Close Button */
@@ -189,15 +247,46 @@
         <span class="close">&times;</span>
         <a class="prev">&#10094;</a>
         <a class="next">&#10095;</a>
+        <div id="modalControls" class="modal-controls">
+            <button id="zoomOutBtn">-</button>
+            <input type="text" id="zoomLevelInput" value="100">
+            <span style="color: white; margin-left: -5px; margin-right: 5px;">%</span>
+            <button id="zoomInBtn">+</button>
+            <button id="fullscreenBtn" style="margin-left: 20px;">&#x26F6;</button>
+        </div>
         <img class="modal-content" id="modalImage">
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var modal = document.getElementById('imageModal');
-            var modalImg = document.getElementById("modalImage");
-            var galleryImages = document.getElementsByClassName('gallery-image');
-            var currentIndex = 0;
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById("modalImage");
+            const galleryImages = document.getElementsByClassName('gallery-image');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const zoomLevelLabel = document.getElementById('zoomLevelLabel');
+            const zoomLevelInput = document.getElementById('zoomLevelInput');
+
+            let currentIndex = 0;
+            let zoomLevel = 1.0;
+
+            let isDragging = false;
+            let startX, startY;
+            let translateX = 0, translateY = 0;
+
+            function updateImageTransform() {
+                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+                zoomLevelInput.value = Math.round(zoomLevel * 100);
+            }
+
+            function resetZoomAndPosition() {
+                zoomLevel = 1.0;
+                translateX = 0;
+                translateY = 0;
+                modalImg.classList.remove('zoomed');
+                updateImageTransform();
+            }
 
             function showImage(index) {
                 if (index >= galleryImages.length) {
@@ -209,6 +298,7 @@
                 }
                 modal.style.display = "block";
                 modalImg.src = galleryImages[currentIndex].src;
+                resetZoomAndPosition();
             }
             
             for (let i = 0; i < galleryImages.length; i++) {
@@ -217,43 +307,127 @@
                 }
             }
 
-            var span = document.getElementsByClassName("close")[0];
+            const span = document.getElementsByClassName("close")[0];
 
             function closeModal() {
                 modal.style.display = "none";
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                }
+                resetZoomAndPosition();
             }
 
             span.onclick = closeModal;
 
-            modal.onclick = function(event) {
-                if (event.target == modal) {
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
                     closeModal();
                 }
-            }
+            });
 
             function changeImage(step) {
                 showImage(currentIndex + step);
             }
 
-            document.querySelector('.prev').onclick = function() {
+            document.querySelector('.prev').onclick = function(e) {
+                e.stopPropagation();
                 changeImage(-1);
             };
 
-            document.querySelector('.next').onclick = function() {
+            document.querySelector('.next').onclick = function(e) {
+                e.stopPropagation();
                 changeImage(1);
             };
 
             document.addEventListener('keydown', function(e) {
                 if (modal.style.display === "block") {
-                    if (e.key === "ArrowLeft") {
-                        changeImage(-1);
-                    } else if (e.key === "ArrowRight") {
-                        changeImage(1);
-                    } else if (e.key === "Escape") {
-                        closeModal();
+                    if (document.activeElement === zoomLevelInput && e.key === 'Enter') {
+                        const newZoom = parseFloat(zoomLevelInput.value);
+                        if (!isNaN(newZoom) && newZoom > 0) {
+                            zoomLevel = newZoom / 100.0;
+                            updateImageTransform();
+                        }
+                        zoomLevelInput.blur();
+                        return;
+                    }
+
+                    if (document.activeElement !== zoomLevelInput) {
+                        if (e.key === "ArrowLeft") {
+                            changeImage(-1);
+                        } else if (e.key === "ArrowRight") {
+                            changeImage(1);
+                        } else if (e.key === "Escape") {
+                            closeModal();
+                        }
                     }
                 }
             });
+
+            zoomInBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const step = zoomLevel >= 2.0 ? 0.50 : 0.25;
+                zoomLevel += step;
+                updateImageTransform();
+            });
+
+            zoomOutBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const step = zoomLevel > 2.0 ? 0.50 : 0.25;
+                if (zoomLevel > step) {
+                    zoomLevel -= step;
+                } else {
+                    zoomLevel = 0.25;
+                }
+                updateImageTransform();
+            });
+
+            zoomLevelInput.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.select();
+            });
+            
+            fullscreenBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (!document.fullscreenElement) {
+                    modal.requestFullscreen().catch(err => {
+                        alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            modalImg.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isDragging = true;
+                startX = e.pageX - translateX;
+                startY = e.pageY - translateY;
+                modalImg.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                translateX = e.pageX - startX;
+                translateY = e.pageY - startY;
+                updateImageTransform();
+            });
+
+            window.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    modalImg.style.cursor = 'grab';
+                }
+            });
+
+            modal.addEventListener('wheel', function(e) {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    const scaleAmount = e.deltaY * -0.01;
+                    zoomLevel = Math.max(0.1, zoomLevel + scaleAmount);
+                    updateImageTransform();
+                }
+            }, { passive: false });
         });
     </script>
 </body>

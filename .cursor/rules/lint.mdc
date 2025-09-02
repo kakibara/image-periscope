@@ -1,0 +1,5 @@
+---
+description: Lint the code using Ruff and mypy.
+globs: ["**/*.py"]
+alwaysApply: true
+---
