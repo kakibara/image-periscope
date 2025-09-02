@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from image_viewer.app import create_app, get_directories, get_formatted_images
+from image_periscope.app import create_app, get_directories, get_formatted_images
 
 
 @pytest.fixture

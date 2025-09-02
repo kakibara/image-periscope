@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from image_viewer.image_utils import get_image_list
+from image_periscope.image_utils import get_image_list
 
 
 @pytest.fixture

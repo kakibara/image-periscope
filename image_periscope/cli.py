@@ -1,7 +1,7 @@
 """This module provides a command-line interface for the Image Viewer application."""
 import argparse
 
-from image_viewer.app import create_app
+from image_periscope.app import create_app
 
 
 def main():
