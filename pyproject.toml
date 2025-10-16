@@ -1,6 +1,6 @@
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+build-backend = "build"
 
 [tool.poetry]
 name = "image-periscope"
@@ -9,6 +9,7 @@ description = "A web application to display images from a specified directory wh
 authors = ["kakibara <moritarizumu@gmail.com>"]
 readme = "README.md"
 packages = [{include = "image_periscope"}]
+include = ["image_periscope/COMMIT_HASH"]
 
 [tool.poetry.dependencies]
 python = ">=3.12"

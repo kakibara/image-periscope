@@ -39,6 +39,12 @@ def create_app(image_dir=None):
     except metadata.PackageNotFoundError:
         instance.config["APP_VERSION"] = "dev"
 
+    commit_hash_file = Path(__file__).parent / "COMMIT_HASH"
+    if commit_hash_file.exists():
+        instance.config["COMMIT_HASH"] = commit_hash_file.read_text().strip()
+    else:
+        instance.config["COMMIT_HASH"] = "N/A"
+
 
     @instance.route("/")
     def index():
@@ -90,7 +96,8 @@ def create_app(image_dir=None):
                               host_name=host_name,
                               ip_address=ip_address,
                               image_directory=image_directory,
-                              app_version=instance.config.get("APP_VERSION"))
+                              app_version=instance.config.get("APP_VERSION"),
+                              commit_hash=instance.config.get("COMMIT_HASH"))
 
     @instance.route("/browse/", defaults={"path": ""})
     @instance.route("/browse/<path:path>")
@@ -161,7 +168,8 @@ def create_app(image_dir=None):
                               host_name=host_name,
                               ip_address=ip_address,
                               image_directory=image_directory,
-                              app_version=instance.config.get("APP_VERSION"))
+                              app_version=instance.config.get("APP_VERSION"),
+                              commit_hash=instance.config.get("COMMIT_HASH"))
 
     @instance.route("/images/<path:filename>")
     def serve_image(filename):
