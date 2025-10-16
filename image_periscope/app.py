@@ -217,25 +217,6 @@ def create_app(image_dir=None):
         safe_content = bleach.clean(content, tags=allowed_tags, strip=True)
         return render_template("view_html.html", title=file_path.name, content=safe_content)
 
-    @instance.route("/compare")
-    def compare_images():
-        """Render the compare page with two images."""
-        image1 = request.args.get("image1")
-        image2 = request.args.get("image2")
-
-        if not image1 or not image2:
-            abort(400, "Two images are required for comparison.")
-
-        # サーバー情報を取得
-        host_name = socket.gethostname()
-        ip_address = socket.gethostbyname(host_name)
-        image_directory = instance.config.get("IMAGE_DIR")
-
-        return render_template("compare.html", image1=image1, image2=image2,
-                               host_name=host_name, ip_address=ip_address,
-                               image_directory=image_directory,
-                               app_version=instance.config.get("APP_VERSION"))
-
     # CORS設定を強化
     @instance.after_request
     def add_header(response):
