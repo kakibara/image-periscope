@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "image-periscope"
-version = "0.7.0"
+version = "0.7.1"
 description = "A web application to display images from a specified directory while maintaining the directory structure."
 authors = ["kakibara <moritarizumu@gmail.com>"]
 readme = "README.md"

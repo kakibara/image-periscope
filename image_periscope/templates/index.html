@@ -17,6 +17,7 @@
             color: #ffffff;
             padding: 10px 0;
             text-align: center;
+            position: relative;
         }
         .gallery {
             display: grid;
@@ -31,6 +32,14 @@
             border-radius: 5px;
             overflow: hidden;
             background: #ffffff;
+            position: relative;
+        }
+        .gallery-item .compare-checkbox {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 20px;
+            height: 20px;
         }
         .gallery-item img {
             max-width: 100%;
@@ -186,6 +195,14 @@
 <body>
     <header>
         <h1>Image Periscope</h1>
+        <div style="position: absolute; top: 10px; right: 10px; color: #ccc; font-size: 0.8em;">
+            v{{ app_version }}
+        </div>
+        <div class="server-info" style="color: #ccc; font-size: 0.8em; margin-top: 5px;">
+            <p style="margin: 2px 0;">Host: {{ host_name }} ({{ ip_address }})</p>
+            <p style="margin: 2px 0;">Serving directory: {{ image_directory }}</p>
+        </div>
+        <button id="compareBtn" style="display:none; position:absolute; top:15px; right:20px; padding:10px; z-index:100; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px;">選択した画像を比較 (<span id="selectedCount">0</span>/2)</button>
     </header>
     <div style="margin: 20px auto 10px auto; max-width: 1200px;">
         <nav style="background:#fff; border:1px solid #ddd; border-radius:5px; padding:10px;">
@@ -228,6 +245,9 @@
                     <option value="{{ n }}" {% if col_count == n %}selected{% endif %}>{{ n }}</option>
                 {% endfor %}
             </select>
+            <label style="margin-left: 20px;">
+                <input type="checkbox" id="compareModeCheckbox"> 比較モード
+            </label>
         </form>
     </div>
     <div style="text-align:center; margin-bottom: 30px;">
@@ -253,6 +273,7 @@
         {% for item in items %}
         <div class="gallery-item">
             {% if item.type == 'image' %}
+            <input type="checkbox" class="compare-checkbox" value="{{ item.path }}" style="display:none;">
             <img src="{{ item.path }}" alt="{{ item.name }}" class="gallery-image">
             <div class="gallery-item-title">
                 <span>{{ item.name }}</span>
@@ -300,6 +321,58 @@
             const zoomLevelLabel = document.getElementById('zoomLevelLabel');
             const zoomLevelInput = document.getElementById('zoomLevelInput');
 
+            const compareModeCheckbox = document.getElementById('compareModeCheckbox');
+            const compareCheckboxes = document.querySelectorAll('.compare-checkbox');
+            const compareBtn = document.getElementById('compareBtn');
+            const selectedCountSpan = document.getElementById('selectedCount');
+            let selectedImages = [];
+
+            compareModeCheckbox.addEventListener('change', function() {
+                const isCompareMode = this.checked;
+                compareCheckboxes.forEach(checkbox => {
+                    checkbox.style.display = isCompareMode ? 'block' : 'none';
+                    if (!isCompareMode) {
+                        checkbox.checked = false;
+                    }
+                });
+                if (!isCompareMode) {
+                    selectedImages = [];
+                    updateCompareButton();
+                    compareBtn.style.display = 'none';
+                }
+            });
+
+            compareCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        if (selectedImages.length < 2) {
+                            selectedImages.push(this.value);
+                        } else {
+                            this.checked = false;
+                            alert('比較できる画像は2枚までです。');
+                        }
+                    } else {
+                        selectedImages = selectedImages.filter(img => img !== this.value);
+                    }
+                    updateCompareButton();
+                });
+            });
+
+            function updateCompareButton() {
+                selectedCountSpan.textContent = selectedImages.length;
+                if (selectedImages.length === 2) {
+                    compareBtn.style.display = 'block';
+                } else {
+                    compareBtn.style.display = 'none';
+                }
+            }
+
+            compareBtn.addEventListener('click', function() {
+                if (selectedImages.length === 2) {
+                    window.open(`/compare?image1=${encodeURIComponent(selectedImages[0])}&image2=${encodeURIComponent(selectedImages[1])}`, '_blank');
+                }
+            });
+
             let currentIndex = 0;
             let zoomLevel = 1.0;
 
@@ -340,7 +413,9 @@
             
             for (let i = 0; i < galleryImages.length; i++) {
                 galleryImages[i].onclick = function() {
-                    showImage(i);
+                    if (!compareModeCheckbox.checked) {
+                        showImage(i);
+                    }
                 }
             }
 

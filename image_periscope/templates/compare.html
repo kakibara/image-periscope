@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Comparison - Image Periscope</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        header {
+            background: #35424a;
+            color: #ffffff;
+            padding: 10px 0;
+            text-align: center;
+            position: relative;
+        }
+        .compare-container {
+            display: flex;
+            width: 100%;
+            height: calc(100% - 70px); /* header height */
+        }
+        .image-pane {
+            width: 50%;
+            height: 100%;
+            overflow: auto;
+            position: relative;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        .image-pane img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: grab;
+            transform-origin: top left;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 5px;
+            color: white;
+        }
+        .controls button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Image Periscope - Comparison</h1>
+        <div style="position: absolute; top: 10px; right: 10px; color: #ccc; font-size: 0.8em;">
+            v{{ app_version }}
+        </div>
+        <div class="server-info" style="color: #ccc; font-size: 0.8em; margin-top: 5px;">
+            <p style="margin: 2px 0;">Host: {{ host_name }} ({{ ip_address }})</p>
+            <p style="margin: 2px 0;">Serving directory: {{ image_directory }}</p>
+        </div>
+    </header>
+    <div class="controls">
+        <button id="zoomInBtn">Zoom In (+)</button>
+        <button id="zoomOutBtn">Zoom Out (-)</button>
+        <button id="resetBtn">Reset</button>
+        <label>
+            <input type="checkbox" id="syncScroll" checked> Sync Scroll
+        </label>
+    </div>
+
+    <div class="compare-container">
+        <div class="image-pane" id="pane1">
+            <img src="{{ image1 }}" alt="Image 1">
+        </div>
+        <div class="image-pane" id="pane2">
+            <img src="{{ image2 }}" alt="Image 2">
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const pane1 = document.getElementById('pane1');
+            const pane2 = document.getElementById('pane2');
+            const img1 = pane1.querySelector('img');
+            const img2 = pane2.querySelector('img');
+            const syncScrollCheckbox = document.getElementById('syncScroll');
+
+            let isSyncing = false;
+
+            pane1.addEventListener('scroll', () => {
+                if (syncScrollCheckbox.checked && !isSyncing) {
+                    isSyncing = true;
+                    pane2.scrollTop = pane1.scrollTop;
+                    pane2.scrollLeft = pane1.scrollLeft;
+                    isSyncing = false;
+                }
+            });
+
+            pane2.addEventListener('scroll', () => {
+                if (syncScrollCheckbox.checked && !isSyncing) {
+                    isSyncing = true;
+                    pane1.scrollTop = pane2.scrollTop;
+                    pane1.scrollLeft = pane2.scrollLeft;
+                    isSyncing = false;
+                }
+            });
+
+            [img1, img2].forEach(img => {
+                let isDragging = false;
+                let startX, startY;
+                let scrollLeft, scrollTop;
+
+                img.parentElement.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.pageX - img.parentElement.offsetLeft;
+                    startY = e.pageY - img.parentElement.offsetTop;
+                    scrollLeft = img.parentElement.scrollLeft;
+                    scrollTop = img.parentElement.scrollTop;
+                    img.style.cursor = 'grabbing';
+                });
+
+                img.parentElement.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    img.style.cursor = 'grab';
+                });
+
+                img.parentElement.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    img.style.cursor = 'grab';
+                });
+
+                img.parentElement.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    const x = e.pageX - img.parentElement.offsetLeft;
+                    const y = e.pageY - img.parentElement.offsetTop;
+                    const walkX = (x - startX) * 2; // The multiplier can be adjusted for sensitivity
+                    const walkY = (y - startY) * 2;
+                    img.parentElement.scrollLeft = scrollLeft - walkX;
+                    img.parentElement.scrollTop = scrollTop - walkY;
+                });
+            });
+
+            let scale = 1;
+            const zoomSpeed = 0.1;
+
+            const applyTransform = () => {
+                [img1, img2].forEach(img => {
+                    img.style.transform = `scale(${scale})`;
+                });
+            };
+
+            document.getElementById('zoomInBtn').addEventListener('click', () => {
+                scale += zoomSpeed;
+                applyTransform();
+            });
+
+            document.getElementById('zoomOutBtn').addEventListener('click', () => {
+                if (scale > zoomSpeed) {
+                    scale -= zoomSpeed;
+                    applyTransform();
+                }
+            });
+            
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                scale = 1;
+                applyTransform();
+                pane1.scrollTop = 0; pane1.scrollLeft = 0;
+                pane2.scrollTop = 0; pane2.scrollLeft = 0;
+            });
+        });
+    </script>
+</body>
+</html>
