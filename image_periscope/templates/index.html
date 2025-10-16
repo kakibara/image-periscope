@@ -307,6 +307,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const scrollPosition = sessionStorage.getItem('scrollPosition');
+            if (scrollPosition) {
+                setTimeout(() => {
+                    window.scrollTo(0, parseInt(scrollPosition, 10));
+                }, 0);
+            }
+
             const modal = document.getElementById('imageModal');
             const modalImg = document.getElementById("modalImage");
             const galleryImages = document.getElementsByClassName('gallery-image');
@@ -344,6 +351,18 @@
                 } else {
                     currentIndex = index;
                 }
+
+                const targetImage = galleryImages[currentIndex];
+                if (targetImage) {
+                    const galleryItem = targetImage.closest('.gallery-item');
+                    if (galleryItem) {
+                        const itemRect = galleryItem.getBoundingClientRect();
+                        const offset = (window.innerHeight - itemRect.height) / 2;
+                        const scrollTop = window.scrollY + itemRect.top - offset;
+                        sessionStorage.setItem('scrollPosition', scrollTop);
+                    }
+                }
+
                 modal.style.display = "block";
                 modalImg.src = galleryImages[currentIndex].src;
                 
@@ -368,6 +387,11 @@
                     document.exitFullscreen();
                 }
                 resetZoomAndPosition();
+                
+                const scrollPosition = sessionStorage.getItem('scrollPosition');
+                if (scrollPosition) {
+                    window.scrollTo(0, parseInt(scrollPosition, 10));
+                }
             }
 
             span.onclick = closeModal;
