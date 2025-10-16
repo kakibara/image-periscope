@@ -1,6 +1,6 @@
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "build"
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "image-periscope"
@@ -10,6 +10,7 @@ authors = ["kakibara <moritarizumu@gmail.com>"]
 readme = "README.md"
 packages = [{include = "image_periscope"}]
 include = ["image_periscope/COMMIT_HASH"]
+build = "build.py"
 
 [tool.poetry.dependencies]
 python = ">=3.12"
