@@ -1,0 +1,58 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bump_version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push to a branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 is required to checkout other branches.
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Bump version and push to release branch
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if release branch exists on remote.
+          if git ls-remote --exit-code --heads origin release; then
+            echo "Release branch exists. Merging main."
+            git checkout release
+            git merge ${{ github.sha }} --no-ff -m "Merge main into release"
+          else
+            echo "Release branch does not exist. Creating it."
+            git checkout -b release ${{ github.sha }}
+          fi
+          
+          echo "Bumping version..."
+          poetry version major
+          NEW_VERSION=$(poetry version -s)
+          
+          echo "Committing version bump..."
+          git add pyproject.toml
+          if [ -f poetry.lock ]; then
+            git add poetry.lock
+          fi
+          
+          git commit -m "Bump version to $NEW_VERSION" -m "Automated version bump by GitHub Actions [skip ci]"
+          
+          echo "Pushing to release branch..."
+          git push origin release

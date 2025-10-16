@@ -1,5 +1,6 @@
 """This module provides a command-line interface for the Image Viewer application."""
 import argparse
+from importlib import metadata
 
 from image_periscope.app import create_app
 
@@ -7,6 +8,13 @@ from image_periscope.app import create_app
 def main():
     """Main entry point for the CLI application."""
     parser = argparse.ArgumentParser(description="Start the image viewer web application.")
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {metadata.version('image-periscope')}",
+        help="Show program's version number and exit.",
+    )
     parser.add_argument("port", type=int, help="The port number to run the web application on.")
     parser.add_argument("directory", type=str, help="The directory containing images to display.")
     parser.add_argument(

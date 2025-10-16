@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像ギャラリー</title>
+    <title>Image Periscope</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
@@ -41,6 +41,17 @@
         .gallery-item-title {
             padding: 10px;
             text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .gallery-item-title a {
+            color: #35424a;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+        .gallery-item-title a:hover {
+            color: #5c7a89;
         }
         /* The Modal (background) */
         .modal {
@@ -174,11 +185,11 @@
 </head>
 <body>
     <header>
-        <h1>画像ギャラリー</h1>
+        <h1>Image Periscope</h1>
     </header>
     <div style="margin: 20px auto 10px auto; max-width: 1200px;">
         <nav style="background:#fff; border:1px solid #ddd; border-radius:5px; padding:10px;">
-            <strong>ディレクトリ:</strong>
+            <strong>Directory:</strong>
             <div style="padding-left:10px;">
                 <!-- パンくずリスト -->
                 <div style="margin-bottom:8px;">
@@ -200,7 +211,12 @@
     </div>
     <div style="text-align:center; margin-bottom: 20px;">
         <form method="get" style="display:inline-block; margin-bottom:0;">
-            <label for="per_page">1ページあたりの表示枚数:</label>
+            <input type="hidden" name="page" value="1">
+            <label for="search_query">検索:</label>
+            <input type="search" id="search_query" name="q" value="{{ search_query or '' }}" placeholder="ファイル名で検索...">
+            <button type="submit">検索</button>
+
+            <label for="per_page" style="margin-left:20px;">表示枚数:</label>
             <select name="per_page" id="per_page" onchange="this.form.submit()">
                 {% for n in [20, 50, 100, 200, 500] %}
                     <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
@@ -212,7 +228,6 @@
                     <option value="{{ n }}" {% if col_count == n %}selected{% endif %}>{{ n }}</option>
                 {% endfor %}
             </select>
-            <input type="hidden" name="page" value="1">
         </form>
     </div>
     <div style="text-align:center; margin-bottom: 30px;">
@@ -235,10 +250,24 @@
         {% endif %}
     </div>
     <div class="gallery">
-        {% for image in images %}
+        {% for item in items %}
         <div class="gallery-item">
-            <img src="{{ image.path }}" alt="{{ image.name }}" class="gallery-image">
-            <div class="gallery-item-title">{{ image.name }}</div>
+            {% if item.type == 'image' %}
+            <img src="{{ item.path }}" alt="{{ item.name }}" class="gallery-image">
+            <div class="gallery-item-title">
+                <span>{{ item.name }}</span>
+                <a href="{{ item.path }}" download="{{ item.name }}">
+                    <i class="fas fa-download"></i>
+                </a>
+            </div>
+            {% elif item.type == 'html' %}
+            <a href="{{ item.path }}" style="display: block; text-align: center; padding: 20px; text-decoration: none; color: #35424a; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <i class="fas fa-file-alt" style="font-size: 5em; margin-bottom: 15px;"></i>
+                <div class="gallery-item-title">
+                    <span>{{ item.name }}</span>
+                </div>
+            </a>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -252,6 +281,9 @@
             <input type="text" id="zoomLevelInput" value="100">
             <span style="color: white; margin-left: -5px; margin-right: 5px;">%</span>
             <button id="zoomInBtn">+</button>
+            <a id="downloadBtn" href="#" download style="display: inline-block; text-decoration: none; margin-left: 10px;">
+                <button type="button"><i class="fas fa-download"></i></button>
+            </a>
             <button id="fullscreenBtn" style="margin-left: 20px;">&#x26F6;</button>
         </div>
         <img class="modal-content" id="modalImage">
@@ -298,6 +330,11 @@
                 }
                 modal.style.display = "block";
                 modalImg.src = galleryImages[currentIndex].src;
+                
+                const downloadBtn = document.getElementById('downloadBtn');
+                downloadBtn.href = galleryImages[currentIndex].src;
+                downloadBtn.download = galleryImages[currentIndex].alt;
+
                 resetZoomAndPosition();
             }
             
@@ -428,6 +465,14 @@
                     updateImageTransform();
                 }
             }, { passive: false });
+
+            // Search shortcut
+            document.addEventListener('keydown', function(e) {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('search_query').focus();
+                }
+            });
         });
     </script>
 </body>

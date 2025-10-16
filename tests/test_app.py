@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from image_periscope.app import create_app, get_directories, get_formatted_images
+from image_periscope.app import create_app, get_directories, get_formatted_items
 
 
 @pytest.fixture
@@ -27,6 +27,7 @@ def test_image_dir():
     (temp_dir / "subdir1" / "image2.png").write_text("dummy data")
     (temp_dir / "subdir2" / "image3.gif").write_text("dummy data")
     (temp_dir / "not_image.txt").write_text("dummy text file")
+    (temp_dir / "xss_test.html").write_text("<h1>Test</h1><script>alert('XSS')</script>")
 
     yield str(temp_dir)
 
@@ -97,6 +98,16 @@ def test_serve_image(client, test_image_dir):
     assert response.status_code == 200
     assert response.data == b"dummy data"
 
+def test_view_html_sanitization(client):
+    """HTML content should be sanitized to prevent XSS."""
+    response = client.get("/view/xss_test.html")
+    assert response.status_code == 200
+    data = response.data.decode("utf-8")
+    assert "<h1>Test</h1>" in data
+    assert "<script>alert('XSS')</script>" not in data
+    assert "&lt;script&gt;alert('XSS')&lt;/script&gt;" not in data
+
+
 def test_get_directories(test_image_dir):
     """get_directories関数がディレクトリ情報を正しく取得することをテスト。"""
     directories = get_directories(test_image_dir)
@@ -110,15 +121,21 @@ def test_get_directories(test_image_dir):
     assert nested_dirs[0]["name"] == "nested"
     assert nested_dirs[0]["path"] == "/browse/subdir2/nested"
 
-def test_get_formatted_images(test_image_dir):
-    """get_formatted_images関数が画像情報を正しく取得することをテスト。"""
-    images = get_formatted_images(test_image_dir)
-    assert len(images) == 1  # トップレベルにはimage1.jpgのみ
-    assert images[0]["name"] == "image1.jpg"
-    assert images[0]["path"] == "/images/image1.jpg"
+def test_get_formatted_items(test_image_dir):
+    """get_formatted_items関数が画像情報を正しく取得することをテスト。"""
+    items = get_formatted_items(Path(test_image_dir))
+    assert len(items) == 2  # トップレベルにはimage1.jpgとxss_test.html
+
+    image_item = next((item for item in items if item["name"] == "image1.jpg"), None)
+    assert image_item is not None
+    assert image_item["path"] == "/images/image1.jpg"
+
+    html_item = next((item for item in items if item["name"] == "xss_test.html"), None)
+    assert html_item is not None
+    assert html_item["path"] == "/view/xss_test.html"
 
     # サブディレクトリの画像
-    subdir_images = get_formatted_images(Path(test_image_dir) / "subdir1", "subdir1")
-    assert len(subdir_images) == 1
-    assert subdir_images[0]["name"] == "image2.png"
-    assert subdir_images[0]["path"] == "/images/subdir1/image2.png"
+    subdir_items = get_formatted_items(Path(test_image_dir) / "subdir1", "subdir1")
+    assert len(subdir_items) == 1
+    assert subdir_items[0]["name"] == "image2.png"
+    assert subdir_items[0]["path"] == "/images/subdir1/image2.png"
